@@ -1,0 +1,7 @@
+[package]
+name = "hangman"
+version = "0.1.0"
+authors = ["katecpp <kasia.macias@gmail.com>"]
+
+[dependencies]
+rand="0.3.0"
