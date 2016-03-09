@@ -9,8 +9,8 @@ use rand::Rng;
 
 fn main() {
     println!("Hello, world!");
-
-    read_input().expect("failed to read input data!");
+    
+    let secret_line = read_input().expect("failed to read input data!");
     read_guess();
 }
 
@@ -23,7 +23,7 @@ fn read_guess() {
     println!("You guessed: {}", guess);
 }
 
-fn read_input() -> Result<(), io::Error>
+fn read_input() -> Result<String, io::Error>
 {
     let f = try!(File::open("input.txt"));
     let file = BufReader::new(&f);
@@ -40,8 +40,9 @@ fn read_input() -> Result<(), io::Error>
     println!("Read {} lines", v.len());
 
     let random_line = rand::thread_rng().gen_range(1, v.len());
-    println!("Randomly chosen line: {}. {}", random_line, v[random_line]);
+    let secret_line = v[random_line].clone();
+    println!("Randomly chosen line: {}. {}", random_line, secret_line);
 
-    Ok(())
+    Ok(secret_line)
 }
 
