@@ -7,16 +7,29 @@ use std::fs::File;
 use rand::Rng;
 // use std::path::Path;
 
-fn main() {
-    println!("Hello, world!");
-
+fn main()
+{
     let secret_line = read_input()
                       .expect("Failed to read input data!");				  
 	let mut discovered_letters = String::new();
 	let mut lives = 6;
 	
+	println!("Welcome to HANGMAN 0.1!");
+	println!("Guess the sentence:");
+
 	while lives > 0
 	{
+		let secret_line_masked = format_masked_string(&secret_line, &discovered_letters);
+		println!("{}", secret_line_masked);
+		
+		if !secret_line_masked.contains('_')
+		{
+			println!("You won!");
+			break;
+		}
+
+		println!("Lives: {} \nDiscovered letters: {}", lives, discovered_letters);
+		println!("Type your guess:");
 		let user_guess = read_guess();
 		
 		if user_guess_can_be_accepted(&discovered_letters, user_guess)
@@ -38,20 +51,15 @@ fn main() {
 		{
 			println!("Invalid input, try again");
 		}
-
-		print_masked_string(&secret_line, &discovered_letters);
 	}
 }
 
 fn read_guess() -> char
 {
-    println!("Please input your guess.");
-
     // TODO: read one char instead of line
     let mut guess = String::new();
     io::stdin().read_line(&mut guess).expect("Failed to read line");
 	let guessed_char : char = guess.chars().nth(0).unwrap();
-    println!("You guessed: {}", guessed_char);
 
     guessed_char
 }
@@ -66,32 +74,31 @@ fn read_input() -> Result<String, io::Error>
     for line in file.lines()
     {
         let l = line.unwrap().to_lowercase();
-        // println!("{}", l);
         v.push(l);
     }
 
-    println!("Read {} lines", v.len());
+    // println!("Read {} lines", v.len());
 
     let random_line = rand::thread_rng().gen_range(1, v.len());
     let secret_line = v[random_line].clone();
-    println!("Randomly chosen line: {}. {}", random_line, secret_line);
+    // println!("Randomly chosen line: {}. {}", random_line, secret_line);
 
     Ok(secret_line)
 }
 
-fn print_masked_string(input: &String, mask: &String)
-{
-    println!("Original string: {}. Mask: {}", input, mask);
+fn format_masked_string(input: &String, mask: &String) -> String
+{	
+	let mut result : String = String::new();
 
     for (u, c) in input.chars().enumerate()
     {
-        print!("{} ",
-                if c == ' ' {c}
+		result.push(if c == ' ' {c}
                 else if mask.contains(c) {c}
                 else {'_'});
+		result.push(' ');
     }
-
-    print!("\n");
+	
+	result
 }
 
 fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> bool
