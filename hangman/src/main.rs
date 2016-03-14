@@ -10,19 +10,21 @@ use rand::Rng;
 fn main() {
     println!("Hello, world!");
 
-    let mut discovered_letters = String::new();
-    
     let secret_line = read_input()
-                      .expect("Failed to read input data!");
+                      .expect("Failed to read input data!");				  
+	let mut discovered_letters = String::new();
+	let mut lives = 10;
+	
+	while lives > 0
+	{
+		let user_guess = read_guess().unwrap();
 
-    let a = String::from("Kasia");
-    let b = String::from("a");
-    print_masked_string(secret_line, b);
+		discovered_letters.push(user_guess.chars().nth(0).unwrap());
+		println!("Mask after push_str: {}", discovered_letters);
+		// TODO: append chars instead of String
 
-    let mut user_guess = read_guess();
-    // TODO: check if input is appearing in line...
-    // TODO: print as for each undiscovered char
-
+		print_masked_string(&secret_line, &discovered_letters);
+	}
 }
 
 fn read_guess() -> Result<String, io::Error>
@@ -47,7 +49,7 @@ fn read_input() -> Result<String, io::Error>
     for line in file.lines()
     {
         let l = line.unwrap();
-        println!("{}", l);
+        // println!("{}", l);
         v.push(l);
     }
 
@@ -60,7 +62,7 @@ fn read_input() -> Result<String, io::Error>
     Ok(secret_line)
 }
 
-fn print_masked_string(input: String, mask: String)
+fn print_masked_string(input: &String, mask: &String)
 {
     println!("Original string: {}. Mask: {}", input, mask);
 
@@ -73,4 +75,16 @@ fn print_masked_string(input: String, mask: String)
     }
 
     print!("\n");
+}
+
+fn user_guess_can_be_accepted(discovered_letters: String, user_guess: String) -> bool
+{
+	// hachiko.chars().nth(1);
+	true
+}
+
+fn user_guessed_letter(secret_line: String, user_guess: String) -> bool
+{
+	// hachiko.chars().nth(1);
+	true
 }
