@@ -13,15 +13,31 @@ fn main() {
     let secret_line = read_input()
                       .expect("Failed to read input data!");				  
 	let mut discovered_letters = String::new();
-	let mut lives = 10;
+	let mut lives = 6;
 	
 	while lives > 0
 	{
 		let user_guess = read_guess().unwrap();
+		
+		if user_guess_can_be_accepted(&discovered_letters, &user_guess)
+		{
+			discovered_letters.push(user_guess.chars().nth(0).unwrap());
 
-		discovered_letters.push(user_guess.chars().nth(0).unwrap());
-		println!("Mask after push_str: {}", discovered_letters);
-		// TODO: append chars instead of String
+			if user_guessed_letter(&secret_line, &user_guess)
+			{
+				println!("Great! You guessed {}!",  &user_guess);
+			}
+			else
+			{
+				lives = lives - 1;
+				println!("Unfortunately, no {}",  &user_guess);
+				println!("lives remaining: {}", lives);
+			}
+		}
+		else
+		{
+			println!("Invalid input, try again");
+		}
 
 		print_masked_string(&secret_line, &discovered_letters);
 	}
@@ -34,6 +50,7 @@ fn read_guess() -> Result<String, io::Error>
     // TODO: read one char instead of line
     let mut guess = String::new();
     io::stdin().read_line(&mut guess).expect("Failed to read line");
+	// TODO: let guess : String = guess.trim();
     println!("You guessed: {}", guess);
 
     Ok(guess)
@@ -48,7 +65,7 @@ fn read_input() -> Result<String, io::Error>
 
     for line in file.lines()
     {
-        let l = line.unwrap();
+        let l = line.unwrap().to_lowercase();
         // println!("{}", l);
         v.push(l);
     }
@@ -77,14 +94,14 @@ fn print_masked_string(input: &String, mask: &String)
     print!("\n");
 }
 
-fn user_guess_can_be_accepted(discovered_letters: String, user_guess: String) -> bool
+fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: &String) -> bool
 {
-	// hachiko.chars().nth(1);
-	true
+	let user_input : char = user_guess.chars().nth(0).unwrap();
+	!discovered_letters.contains(user_input)
+	&& user_input.is_alphabetic()
 }
 
-fn user_guessed_letter(secret_line: String, user_guess: String) -> bool
+fn user_guessed_letter(secret_line: &String, user_guess: &String) -> bool
 {
-	// hachiko.chars().nth(1);
-	true
+	secret_line.contains(user_guess.chars().nth(0).unwrap())
 }
