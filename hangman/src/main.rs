@@ -17,13 +17,13 @@ fn main() {
 	
 	while lives > 0
 	{
-		let user_guess = read_guess().unwrap();
+		let user_guess = read_guess();
 		
-		if user_guess_can_be_accepted(&discovered_letters, &user_guess)
+		if user_guess_can_be_accepted(&discovered_letters, user_guess)
 		{
-			discovered_letters.push(user_guess.chars().nth(0).unwrap());
+			discovered_letters.push(user_guess);
 
-			if user_guessed_letter(&secret_line, &user_guess)
+			if user_guessed_letter(&secret_line, user_guess)
 			{
 				println!("Great! You guessed {}!",  &user_guess);
 			}
@@ -31,7 +31,7 @@ fn main() {
 			{
 				lives = lives - 1;
 				println!("Unfortunately, no {}",  &user_guess);
-				println!("lives remaining: {}", lives);
+				println!("Lives remaining: {}", lives);
 			}
 		}
 		else
@@ -43,17 +43,17 @@ fn main() {
 	}
 }
 
-fn read_guess() -> Result<String, io::Error>
+fn read_guess() -> char
 {
     println!("Please input your guess.");
 
     // TODO: read one char instead of line
     let mut guess = String::new();
     io::stdin().read_line(&mut guess).expect("Failed to read line");
-	// TODO: let guess : String = guess.trim();
-    println!("You guessed: {}", guess);
+	let guessed_char : char = guess.chars().nth(0).unwrap();
+    println!("You guessed: {}", guessed_char);
 
-    Ok(guess)
+    guessed_char
 }
 
 fn read_input() -> Result<String, io::Error>
@@ -94,14 +94,13 @@ fn print_masked_string(input: &String, mask: &String)
     print!("\n");
 }
 
-fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: &String) -> bool
+fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> bool
 {
-	let user_input : char = user_guess.chars().nth(0).unwrap();
-	!discovered_letters.contains(user_input)
-	&& user_input.is_alphabetic()
+	!discovered_letters.contains(user_guess)
+	&& user_guess.is_alphabetic()
 }
 
-fn user_guessed_letter(secret_line: &String, user_guess: &String) -> bool
+fn user_guessed_letter(secret_line: &String, user_guess: char) -> bool
 {
-	secret_line.contains(user_guess.chars().nth(0).unwrap())
+	secret_line.contains(user_guess)
 }
