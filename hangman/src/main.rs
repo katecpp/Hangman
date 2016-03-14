@@ -7,6 +7,12 @@ use std::fs::File;
 use rand::Rng;
 // use std::path::Path;
 
+enum UserInputStatus {
+	Valid,
+	NotAlfabetic,
+	AlreadyDiscovered
+}
+
 fn main()
 {
     let secret_line = read_input()
@@ -32,24 +38,33 @@ fn main()
 		println!("Type your guess:");
 		let user_guess = read_guess();
 		
-		if user_guess_can_be_accepted(&discovered_letters, user_guess)
+		match user_guess_can_be_accepted(&discovered_letters, user_guess)
 		{
-			discovered_letters.push(user_guess);
+			UserInputStatus::Valid => 
+			{
+				discovered_letters.push(user_guess);
 
-			if user_guessed_letter(&secret_line, user_guess)
+				if user_guessed_letter(&secret_line, user_guess)
+				{
+					println!("Great! You guessed {}!",  &user_guess);
+				}
+				else
+				{
+					lives = lives - 1;
+					println!("Unfortunately, no {}",  &user_guess);
+					println!("Lives remaining: {}", lives);
+				}
+			},
+
+			UserInputStatus::NotAlfabetic => 
 			{
-				println!("Great! You guessed {}!",  &user_guess);
-			}
-			else
+				println!("{} is not a letter!", user_guess);
+			},
+			
+			UserInputStatus::AlreadyDiscovered => 
 			{
-				lives = lives - 1;
-				println!("Unfortunately, no {}",  &user_guess);
-				println!("Lives remaining: {}", lives);
-			}
-		}
-		else
-		{
-			println!("Invalid input, try again");
+				println!("{} is already discovered!", user_guess);
+			},
 		}
 	}
 }
@@ -101,10 +116,19 @@ fn format_masked_string(input: &String, mask: &String) -> String
 	result
 }
 
-fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> bool
+fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> UserInputStatus
 {
-	!discovered_letters.contains(user_guess)
-	&& user_guess.is_alphabetic()
+	if !user_guess.is_alphabetic()
+	{
+		return UserInputStatus::NotAlfabetic;
+	}
+
+	if discovered_letters.contains(user_guess)
+	{
+		return UserInputStatus::AlreadyDiscovered;
+	}
+	
+	UserInputStatus::Valid
 }
 
 fn user_guessed_letter(secret_line: &String, user_guess: char) -> bool
