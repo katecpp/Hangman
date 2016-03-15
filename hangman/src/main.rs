@@ -5,7 +5,8 @@ use std::io::BufReader;
 use std::io::BufRead;
 use std::fs::File;
 use rand::Rng;
-// use std::path::Path;
+
+
 
 enum UserInputStatus {
 	Valid,
@@ -15,26 +16,29 @@ enum UserInputStatus {
 
 fn main()
 {
-    let secret_line = read_input()
-                      .expect("Failed to read input data!");				  
+	let console_width = 80;
+    let secret_line = read_input().expect("Failed to read input data!");				  
 	let mut discovered_letters = String::new();
 	let mut lives = 6;
 	
 	println!("Welcome to HANGMAN 0.1!");
 	println!("Guess the sentence:");
-
+	
 	while lives > 0
 	{
 		let secret_line_masked = format_masked_string(&secret_line, &discovered_letters);
+		let frame = std::iter::repeat("-").take(std::cmp::min(secret_line_masked.len(), console_width)).collect::<String>();
+		println!("{}", frame);
 		println!("{}", secret_line_masked);
-		
+		println!("{}", frame);
 		if !secret_line_masked.contains('_')
 		{
 			println!("You won!");
 			break;
 		}
 
-		println!("Lives: {} \nDiscovered letters: {}", lives, discovered_letters);
+		println!("Lives: {}", lives);
+		if !discovered_letters.is_empty(){ println!("Discovered letters: {}", discovered_letters); }
 		println!("Type your guess:");
 		let user_guess = read_guess();
 		
@@ -44,7 +48,7 @@ fn main()
 			{
 				discovered_letters.push(user_guess);
 
-				if user_guessed_letter(&secret_line, user_guess)
+				if secret_line.contains(user_guess)
 				{
 					println!("Great! You guessed {}!",  &user_guess);
 				}
@@ -129,9 +133,4 @@ fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> 
 	}
 	
 	UserInputStatus::Valid
-}
-
-fn user_guessed_letter(secret_line: &String, user_guess: char) -> bool
-{
-	secret_line.contains(user_guess)
 }
