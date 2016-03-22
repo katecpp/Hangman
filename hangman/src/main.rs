@@ -13,10 +13,18 @@ enum UserInputStatus {
     AlreadyDiscovered
 }
 
+enum GameState {
+    Checking,
+    Guessing,
+    Lost,
+    Won
+}
+
 struct GameData {
     secret_line         : String,
     discovered_letters  : String,
-    lives               : i32
+    lives               : i32,
+    game_state          : GameState
 }
 
 fn main()
@@ -26,55 +34,87 @@ fn main()
     let mut gd : GameData = GameData {
                                 secret_line: random_line,
                                 discovered_letters: String::new(),
-                                lives : 6
+                                lives : 6,
+                                game_state : GameState::Guessing
                                 };
 
     let frame = create_frame(2*gd.secret_line.len());
 
-    while gd.lives > 0
+    loop
     {
-        println!("Lives left: {}", gd.lives);
-        if !gd.discovered_letters.is_empty()
-        {
-            println!("Discovered letters: {}", gd.discovered_letters);
-        }
-
         let secret_line_masked = format_masked_string(&gd.secret_line, &gd.discovered_letters);
-
         println!("{}", frame);
         println!("{}", secret_line_masked);
         println!("{}", frame);
 
-        if !secret_line_masked.contains('_')
+        match gd.game_state
         {
-            println!("You won!");
-            break;
-        }
-
-        println!("Type your guess:");
-        let user_guess = read_guess();
-
-        match user_guess_can_be_accepted(&gd.discovered_letters, user_guess)
-        {
-            UserInputStatus::Valid =>
+            GameState::Checking =>
             {
-                gd.discovered_letters.push(user_guess);
-
-                if !gd.secret_line.contains(user_guess)
+                println!("Lives left: {}", gd.lives);
+                if !gd.discovered_letters.is_empty()
                 {
-                    gd.lives = gd.lives - 1;
-                    println!("Unfortunately, no {}",  &user_guess);
+                    println!("Discovered letters: {}", gd.discovered_letters);
+                }
+
+                if !secret_line_masked.contains('_')
+                {
+                    gd.game_state = GameState::Won;
+                }
+                else if gd.lives == 0
+                {
+                    gd.game_state = GameState::Lost;
+                }
+                else
+                {
+                    gd.game_state = GameState::Guessing;
+                }
+            }
+
+            GameState::Guessing =>
+            {
+                println!("Type your guess:");
+                let user_guess = read_guess();
+
+                match user_guess_can_be_accepted(&gd.discovered_letters, user_guess)
+                {
+                    UserInputStatus::Valid =>
+                    {
+                        gd.discovered_letters.push(user_guess);
+
+                        if !gd.secret_line.contains(user_guess)
+                        {
+                            gd.lives = gd.lives - 1;
+                            println!("Unfortunately, no {}",  &user_guess);
+                        }
+
+                        gd.game_state = GameState::Checking;
+                    },
+
+                    UserInputStatus::NotAlphabetic =>
+                    {
+                        println!("{} is not a letter!", user_guess);
+                        gd.game_state = GameState::Guessing;
+                    },
+
+                    UserInputStatus::AlreadyDiscovered =>
+                    {
+                        println!("{} is already discovered!", user_guess);
+                        gd.game_state = GameState::Guessing;
+                    },
                 }
             },
 
-            UserInputStatus::NotAlphabetic =>
+            GameState::Lost =>
             {
-                println!("{} is not a letter!", user_guess);
+                println!("You lost!");
+                break;
             },
 
-            UserInputStatus::AlreadyDiscovered =>
+            GameState::Won =>
             {
-                println!("{} is already discovered!", user_guess);
+                println!("You won!");
+                break;
             },
         }
     }
@@ -82,6 +122,7 @@ fn main()
 
 fn read_guess() -> char
 {
+    // TODO: thread panic for empty input
     let mut guess = String::new();
     io::stdin().read_line(&mut guess).expect("Failed to read line");
     let guessed_char : char = guess.trim().chars().nth(0).unwrap();
