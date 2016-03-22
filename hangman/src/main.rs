@@ -84,7 +84,7 @@ fn read_guess() -> char
 {
     let mut guess = String::new();
     io::stdin().read_line(&mut guess).expect("Failed to read line");
-    let guessed_char : char = guess.chars().nth(0).unwrap();
+    let guessed_char : char = guess.trim().chars().nth(0).unwrap();
     // guess.char_at(0) is unstable
     guessed_char
 }
