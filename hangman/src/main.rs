@@ -9,29 +9,37 @@ use rand::Rng;
 
 enum UserInputStatus {
     Valid,
-    NotAlfabetic,
+    NotAlphabetic,
     AlreadyDiscovered
+}
+
+struct GameData {
+    secret_line         : String,
+    discovered_letters  : String,
+    lives               : i32
 }
 
 fn main()
 {
-    let secret_line             = read_input().expect("Failed to read input data!");
-    let mut discovered_letters  = String::new();
-    let mut lives               = 6;
-    let console_width           = 80;
-    let frame = std::iter::repeat("-")
-                .take(std::cmp::min(secret_line.len(), console_width))
-                .collect::<String>();
+    let random_line = get_random_line().expect("Failed to read input data!");
 
-    while lives > 0
+    let mut gd : GameData = GameData {
+                                secret_line: random_line,
+                                discovered_letters: String::new(),
+                                lives : 6
+                                };
+
+    let frame = create_frame(2*gd.secret_line.len());
+
+    while gd.lives > 0
     {
-        println!("Lives left: {}", lives);
-        if !discovered_letters.is_empty()
+        println!("Lives left: {}", gd.lives);
+        if !gd.discovered_letters.is_empty()
         {
-            println!("Discovered letters: {}", discovered_letters);
+            println!("Discovered letters: {}", gd.discovered_letters);
         }
 
-        let secret_line_masked = format_masked_string(&secret_line, &discovered_letters);
+        let secret_line_masked = format_masked_string(&gd.secret_line, &gd.discovered_letters);
 
         println!("{}", frame);
         println!("{}", secret_line_masked);
@@ -46,20 +54,20 @@ fn main()
         println!("Type your guess:");
         let user_guess = read_guess();
 
-        match user_guess_can_be_accepted(&discovered_letters, user_guess)
+        match user_guess_can_be_accepted(&gd.discovered_letters, user_guess)
         {
             UserInputStatus::Valid =>
             {
-                discovered_letters.push(user_guess);
+                gd.discovered_letters.push(user_guess);
 
-                if !secret_line.contains(user_guess)
+                if !gd.secret_line.contains(user_guess)
                 {
-                    lives = lives - 1;
+                    gd.lives = gd.lives - 1;
                     println!("Unfortunately, no {}",  &user_guess);
                 }
             },
 
-            UserInputStatus::NotAlfabetic =>
+            UserInputStatus::NotAlphabetic =>
             {
                 println!("{} is not a letter!", user_guess);
             },
@@ -81,7 +89,7 @@ fn read_guess() -> char
     guessed_char
 }
 
-fn read_input() -> Result<String, io::Error>
+fn get_random_line() -> Result<String, io::Error>
 {
     let f = try!(File::open("input.txt"));
     let file = BufReader::new(&f);
@@ -117,7 +125,7 @@ fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> 
 {
     if !user_guess.is_alphabetic()
     {
-        return UserInputStatus::NotAlfabetic;
+        return UserInputStatus::NotAlphabetic;
     }
 
     if discovered_letters.contains(user_guess)
@@ -127,3 +135,12 @@ fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> 
 
     UserInputStatus::Valid
 }
+
+fn create_frame(input_width: usize) -> String
+{
+    let console_width = 80;
+    std::iter::repeat("-")
+            .take(std::cmp::min(input_width, console_width))
+            .collect::<String>()
+}
+
