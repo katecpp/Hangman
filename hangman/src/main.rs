@@ -1,4 +1,7 @@
 extern crate rand;
+extern crate ansi_term;
+
+use std::process::Command;
 
 use std::io;
 use std::io::BufReader;
@@ -6,111 +9,58 @@ use std::io::BufRead;
 use std::fs::File;
 use rand::Rng;
 
-enum UserInputStatus {
-    Accepted,
-    NotAccepted,
-}
-
-enum GameState {
-    Checking,
-    Guessing,
-    Lost,
-    Won
-}
+use ansi_term::Colour::Red;
+use ansi_term::Colour::Green;
+use ansi_term::Colour::Yellow;
 
 struct GameData {
     secret_line         : String,
     discovered_letters  : String,
     lives               : i32,
-    game_state          : GameState
+    status              : String
 }
 
 fn main()
 {
     let random_line = get_random_line().expect("Failed to read input data!");
-    let frame       = create_frame(2 * random_line.len());
-
+    // TODO: nicer way to display is needed
     let mut gd : GameData = GameData {
-                                secret_line        : random_line,
-                                discovered_letters : String::new(),
-                                lives              : 5,
-                                game_state         : GameState::Guessing
-                                };
+                        secret_line        : random_line,
+                        discovered_letters : String::new(),
+                        lives              : 5,
+                        status             : String::new()
+                        };
 
     loop
     {
+        clear();
+        println!("-------------------------------HANGMAN 0.1 ------------------------");
+        print_hangman(&gd);
+
         let secret_line_masked = format_masked_string(&gd.secret_line, &gd.discovered_letters);
+        println!("{}", secret_line_masked);
 
-        match gd.game_state
+        if !secret_line_masked.contains('_')
         {
-            GameState::Checking =>
-            {
-                println!("Lives left: {}", gd.lives);
-                if !gd.discovered_letters.is_empty()
-                {
-                    println!("Discovered letters: {}", gd.discovered_letters);
-                }
-
-                if !secret_line_masked.contains('_')
-                {
-                    gd.game_state = GameState::Won;
-                }
-                else if gd.lives == 0
-                {
-                    gd.game_state = GameState::Lost;
-                }
-                else
-                {
-                    gd.game_state = GameState::Guessing;
-                }
-            }
-
-            GameState::Guessing =>
-            {
-                print_hangman(gd.lives);
-                println!("{}", frame);
-                println!("{}", secret_line_masked);
-                println!("{}", frame);
-                println!("Type your guess: ");
-                let user_guess = read_guess();
-
-                match process_user_guess(&mut gd, user_guess)
-                {
-                    UserInputStatus::Accepted =>
-                    {
-                        gd.game_state = GameState::Checking;
-                    },
-
-                    UserInputStatus::NotAccepted =>
-                    {
-                        gd.game_state = GameState::Guessing;
-                    },
-                }
-            },
-
-            GameState::Lost =>
-            {
-                print_hangman(gd.lives);
-                println!("{}", frame);
-                println!("{}", secret_line_masked);
-                println!("{}", frame);
-                println!("You lost!");
-                break;
-            },
-
-            GameState::Won =>
-            {
-                print_hangman(-1);
-                println!("{}", frame);
-                println!("{}", secret_line_masked);
-                println!("{}", frame);
-                println!("You won!");
-                break;
-            },
+            println!("{}", Green.bold().paint("-------------------------------You won!------------------------"));
+            break;
         }
+        else if gd.lives == 0
+        {
+            println!("{}",Red.bold().paint("-------------------------------You lost!------------------------"));
+            break;
+        }
+        else
+        {
+            println!("{}", gd.status);
+        }
+
+        println!("-------------------------------Type your guess ------------------------");
+        let user_guess = read_guess();
+        process_user_guess(&mut gd, user_guess);
     }
 }
-
+// TODO: tolower
 fn read_guess() -> Option<char>
 {
     let mut guess = String::new();
@@ -135,6 +85,8 @@ fn get_random_line() -> Result<String, io::Error>
     Ok(secret_line)
 }
 
+// TODO: there is no point in doing it everytime
+// TODO: discovered string should be stored and 1 letter changed everytime
 fn format_masked_string(input: &String, mask: &String) -> String
 {
     let mut result : String = String::new();
@@ -150,7 +102,7 @@ fn format_masked_string(input: &String, mask: &String) -> String
     result
 }
 
-fn process_user_guess(gd: &mut GameData, user_guess: Option<char>) -> UserInputStatus
+fn process_user_guess(gd: &mut GameData, user_guess: Option<char>)
 {
     match user_guess
     {
@@ -158,13 +110,11 @@ fn process_user_guess(gd: &mut GameData, user_guess: Option<char>) -> UserInputS
         {
             if !guess.is_alphabetic()
             {
-                println!("{} is not a letter!", guess);
-                return UserInputStatus::NotAccepted;
+                gd.status = format!("-------------------------------{} is not a letter!-------------------------------", guess);
             }
             else if gd.discovered_letters.contains(guess)
             {
-                println!("{} is already discovered!", guess);
-                return UserInputStatus::NotAccepted;
+                gd.status = format!("-------------------------------{} is already discovered!-------------------------------", guess);
             }
             else
             {
@@ -173,108 +123,99 @@ fn process_user_guess(gd: &mut GameData, user_guess: Option<char>) -> UserInputS
                 if !gd.secret_line.contains(guess)
                 {
                     gd.lives = gd.lives - 1;
-                    println!("Unfortunately, no {}",  guess);
+                    gd.status = format!("-------------------------------Unfortunately, no {}------------------------", guess);
+                }
+                else
+                {
+                    gd.status = format!("-------------------------------You discovered {}------------------------", guess);
                 }
             }
-
-            UserInputStatus::Accepted
         }
 
-        None =>
-        {
-            UserInputStatus::NotAccepted
-        }
+        None => {}
     }
 }
 
-fn create_frame(input_width: usize) -> String
+fn print_hangman(gd: &GameData)
 {
-    let console_width = 80;
-    std::iter::repeat("-")
-            .take(std::cmp::min(input_width, console_width))
-            .collect::<String>()
-}
+    println!("Lives: {}. Discovered letters: {}", gd.lives, gd.discovered_letters);
 
-fn print_hangman(lives: i32)
-{
-    match lives
+    match gd.lives
     {
         0 =>
         {
-            println!(" _________  ");
-            println!("|         | ");
+            println!(" _________   ");
+            println!("|         |  ");
             println!("|         XO ");
-            println!("|        /|\\");
-            println!("|        / \\");
-            println!("|           ");
-            println!("|           ");
+            println!("|        /|\\ ");
+            println!("|        / \\ ");
+            println!("|            ");
+            println!("|            ");
         }
 
         1 =>
         {
-            println!(" _________");
-            println!("|         | ");
-            println!("|         O ");
-            println!("|        /|\\");
-            println!("|        / \\");
-            println!("|        |||");
+            println!(" _________   ");
+            println!("|         |  ");
+            println!("|         O  ");
+            println!("|        /|\\ ");
+            println!("|        / \\ ");
+            println!("|        ||| ");
             println!("|        ||| ");
         }
 
         2 =>
         {
-            println!(" _________");
-            println!("|           ");
-            println!("|         O ");
-            println!("|        /|\\");
-            println!("|        / \\");
-            println!("|        |||");
+            println!(" _________   ");
+            println!("|            ");
+            println!("|         O  ");
+            println!("|        /|\\ ");
+            println!("|        / \\ ");
+            println!("|        ||| ");
             println!("|        ||| ");
         }
 
         3 =>
         {
-            println!(" _________");
-            println!("|           ");
-            println!("|           ");
-            println!("|         O ");
-            println!("|        /|\\");
-            println!("|        / \\");
+            println!(" _________   ");
+            println!("|            ");
+            println!("|            ");
+            println!("|         O  ");
+            println!("|        /|\\ ");
+            println!("|        / \\ ");
             println!("|        ||| ");
 
         }
 
         4 =>
         {
-            println!(" _________");
-            println!("|           ");
-            println!("|           ");
-            println!("|           ");
-            println!("|         O ");
-            println!("|        /|\\");
-            println!("|        / \\");
-        }
-
-        5 =>
-        {
-            println!("            ");
-            println!("            ");
-            println!("            ");
-            println!("            ");
-            println!("          O ");
-            println!("         /|\\");
-            println!("         / \\");
+            println!(" _________   ");
+            println!("|            ");
+            println!("|            ");
+            println!("|            ");
+            println!("|         O  ");
+            println!("|        /|\\ ");
+            println!("|        / \\ ");
         }
 
         _ =>
         {
-            println!("            ");
-            println!("            ");
-            println!("            ");
-            println!("            ");
-            println!("          :) ");
-            println!("         /|\\");
-            println!("         / \\");
+            println!("             ");
+            println!("             ");
+            println!("             ");
+            println!("             ");
+            println!("          O  ");
+            println!("         /|\\ ");
+            println!("         / \\ ");
         }
     }
 }
+
+fn clear()
+{
+  let output = Command::new("clear").output().unwrap_or_else(|e|{
+    panic!("failed to execute process: {}", e)
+  });
+  println!("{}", String::from_utf8_lossy(&output.stdout));
+}
+

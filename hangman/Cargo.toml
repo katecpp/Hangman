@@ -5,3 +5,4 @@ authors = ["katecpp <kasia.macias@gmail.com>"]
 
 [dependencies]
 rand="0.3.0"
+ansi_term = "0.7"
