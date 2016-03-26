@@ -6,11 +6,9 @@ use std::io::BufRead;
 use std::fs::File;
 use rand::Rng;
 
-
 enum UserInputStatus {
-    Valid,
-    NotAlphabetic,
-    AlreadyDiscovered
+    Accepted,
+    NotAccepted,
 }
 
 enum GameState {
@@ -30,22 +28,18 @@ struct GameData {
 fn main()
 {
     let random_line = get_random_line().expect("Failed to read input data!");
+    let frame       = create_frame(2 * random_line.len());
 
     let mut gd : GameData = GameData {
-                                secret_line: random_line,
-                                discovered_letters: String::new(),
-                                lives : 6,
-                                game_state : GameState::Guessing
+                                secret_line        : random_line,
+                                discovered_letters : String::new(),
+                                lives              : 5,
+                                game_state         : GameState::Guessing
                                 };
-
-    let frame = create_frame(2*gd.secret_line.len());
 
     loop
     {
         let secret_line_masked = format_masked_string(&gd.secret_line, &gd.discovered_letters);
-        println!("{}", frame);
-        println!("{}", secret_line_masked);
-        println!("{}", frame);
 
         match gd.game_state
         {
@@ -73,33 +67,22 @@ fn main()
 
             GameState::Guessing =>
             {
-                println!("Type your guess:");
+                print_hangman(gd.lives);
+                println!("{}", frame);
+                println!("{}", secret_line_masked);
+                println!("{}", frame);
+                println!("Type your guess: ");
                 let user_guess = read_guess();
 
-                match user_guess_can_be_accepted(&gd.discovered_letters, user_guess)
+                match process_user_guess(&mut gd, user_guess)
                 {
-                    UserInputStatus::Valid =>
+                    UserInputStatus::Accepted =>
                     {
-                        gd.discovered_letters.push(user_guess);
-
-                        if !gd.secret_line.contains(user_guess)
-                        {
-                            gd.lives = gd.lives - 1;
-                            println!("Unfortunately, no {}",  &user_guess);
-                        }
-
                         gd.game_state = GameState::Checking;
                     },
 
-                    UserInputStatus::NotAlphabetic =>
+                    UserInputStatus::NotAccepted =>
                     {
-                        println!("{} is not a letter!", user_guess);
-                        gd.game_state = GameState::Guessing;
-                    },
-
-                    UserInputStatus::AlreadyDiscovered =>
-                    {
-                        println!("{} is already discovered!", user_guess);
                         gd.game_state = GameState::Guessing;
                     },
                 }
@@ -107,12 +90,20 @@ fn main()
 
             GameState::Lost =>
             {
+                print_hangman(gd.lives);
+                println!("{}", frame);
+                println!("{}", secret_line_masked);
+                println!("{}", frame);
                 println!("You lost!");
                 break;
             },
 
             GameState::Won =>
             {
+                print_hangman(-1);
+                println!("{}", frame);
+                println!("{}", secret_line_masked);
+                println!("{}", frame);
                 println!("You won!");
                 break;
             },
@@ -120,14 +111,11 @@ fn main()
     }
 }
 
-fn read_guess() -> char
+fn read_guess() -> Option<char>
 {
-    // TODO: thread panic for empty input
     let mut guess = String::new();
     io::stdin().read_line(&mut guess).expect("Failed to read line");
-    let guessed_char : char = guess.trim().chars().nth(0).unwrap();
-    // guess.char_at(0) is unstable
-    guessed_char
+    guess.trim().chars().nth(0)
 }
 
 fn get_random_line() -> Result<String, io::Error>
@@ -162,19 +150,41 @@ fn format_masked_string(input: &String, mask: &String) -> String
     result
 }
 
-fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> UserInputStatus
+fn process_user_guess(gd: &mut GameData, user_guess: Option<char>) -> UserInputStatus
 {
-    if !user_guess.is_alphabetic()
+    match user_guess
     {
-        return UserInputStatus::NotAlphabetic;
-    }
+        Some(guess) =>
+        {
+            if !guess.is_alphabetic()
+            {
+                println!("{} is not a letter!", guess);
+                return UserInputStatus::NotAccepted;
+            }
+            else if gd.discovered_letters.contains(guess)
+            {
+                println!("{} is already discovered!", guess);
+                return UserInputStatus::NotAccepted;
+            }
+            else
+            {
+                gd.discovered_letters.push(guess);
 
-    if discovered_letters.contains(user_guess)
-    {
-        return UserInputStatus::AlreadyDiscovered;
-    }
+                if !gd.secret_line.contains(guess)
+                {
+                    gd.lives = gd.lives - 1;
+                    println!("Unfortunately, no {}",  guess);
+                }
+            }
 
-    UserInputStatus::Valid
+            UserInputStatus::Accepted
+        }
+
+        None =>
+        {
+            UserInputStatus::NotAccepted
+        }
+    }
 }
 
 fn create_frame(input_width: usize) -> String
@@ -185,3 +195,86 @@ fn create_frame(input_width: usize) -> String
             .collect::<String>()
 }
 
+fn print_hangman(lives: i32)
+{
+    match lives
+    {
+        0 =>
+        {
+            println!(" _________  ");
+            println!("|         | ");
+            println!("|         XO ");
+            println!("|        /|\\");
+            println!("|        / \\");
+            println!("|           ");
+            println!("|           ");
+        }
+
+        1 =>
+        {
+            println!(" _________");
+            println!("|         | ");
+            println!("|         O ");
+            println!("|        /|\\");
+            println!("|        / \\");
+            println!("|        |||");
+            println!("|        ||| ");
+        }
+
+        2 =>
+        {
+            println!(" _________");
+            println!("|           ");
+            println!("|         O ");
+            println!("|        /|\\");
+            println!("|        / \\");
+            println!("|        |||");
+            println!("|        ||| ");
+        }
+
+        3 =>
+        {
+            println!(" _________");
+            println!("|           ");
+            println!("|           ");
+            println!("|         O ");
+            println!("|        /|\\");
+            println!("|        / \\");
+            println!("|        ||| ");
+
+        }
+
+        4 =>
+        {
+            println!(" _________");
+            println!("|           ");
+            println!("|           ");
+            println!("|           ");
+            println!("|         O ");
+            println!("|        /|\\");
+            println!("|        / \\");
+        }
+
+        5 =>
+        {
+            println!("            ");
+            println!("            ");
+            println!("            ");
+            println!("            ");
+            println!("          O ");
+            println!("         /|\\");
+            println!("         / \\");
+        }
+
+        _ =>
+        {
+            println!("            ");
+            println!("            ");
+            println!("            ");
+            println!("            ");
+            println!("          :) ");
+            println!("         /|\\");
+            println!("         / \\");
+        }
+    }
+}

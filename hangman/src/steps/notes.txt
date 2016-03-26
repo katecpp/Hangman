@@ -1,0 +1,213 @@
+# First program in Rust: hangman
+
+Rules of Hangman Game should be well-known to everybody. Here is the step by step process of how I created a very simple Hangman Game in Rust. This is my first program in Rust so it very likely that the code is not faultless nor optimal. Feel free to comment if you see some errors!
+
+## Creating a project with Cargo
+
+... description done at home
+
+## Input sentences
+
+The Hangman Game requires some input sentences/words which the player will be guessing. I copied some english proverbs base to text file and removed commas and other punctuation marks. Proverbs are separated with newline sign. Such prepared file is read by the program line by line.
+
+{ %highlight rust %}
+use std::io;
+use std::io::BufReader;
+use std::io::BufRead;
+use std::fs::File;
+
+fn main()
+{
+    read_input().expect("Failed to read input data!");
+}
+
+fn read_input() -> Result<(), io::Error>
+{
+    let f = try!(File::open("input.txt")); // [1]
+    let file = BufReader::new(&f); // [2]
+    let mut v: Vec<String> = Vec::new();
+
+    for line in file.lines() // [3]
+    {
+        let l = line.unwrap().to_lowercase(); // [4]
+        println!("{}", l); // [5]
+        v.push(l); // [6]
+    }
+
+    println!("Correctly loaded {} lines.", v.len()); //[7]
+
+    Ok(()) // [8]
+}
+{ %endhighlight% }
+
+The [1] line has two important parts. First one is [try! macro] (http://doc.rust-lang.org/std/result/index.html#the-try-macro). Second one is operation of opening the file (https://doc.rust-lang.org/std/fs/struct.File.html#method.open).
+
+To use File::open we need to `use std::fs::File;`. The operation itself attempts to open (read-only) a file located in given path. If the path does not exist it returns an error which is handled by try! macro.
+
+The try! macro is quite complicated feature and it deserves some longer considerations. http://www.jonathanturner.org/2015/11/learning-to-try-things-in-rust.html
+
+In line [2] the buffer to read from file is created. (https://doc.rust-lang.org/std/io/struct.BufReader.html) The BufReader loads a lot of data from the source at once, instead of many frequent reads. 
+
+In line [3] we use the method `lines` which returns the iterator over the lines from this ReadBuf. We need to unwrap the result ([4]), because the `lines()` in fact returns io::Result<String>.
+Additionally for the Hangman Game is useful to convert the string to lower case. 
+
+We print the current line in line [5]; after that we push the line into to vector [6]. Here the order of [5] and [6] is significant - if you swap the lines, the
+code won't compile. 
+
+[7] print additional control log at the end of the method, so we know how many lines is now in the vector. This vector is now our local base of possible sentences to guess.
+
+In line [8] we return the result in case when everything went ok. For now, the wrapped value is of type (), so in fact we return empty value wrapped by the error handling
+type.
+
+## Choosing random line
+
+Now let's implement choosing the random line from our base. The `rand()` function is not yet in standard library. We need to use crate `rand`.
+Add the dependency to your Cargo.toml:
+
+[dependencies]
+rand="0.3.0"
+
+And in your main.rs, at the top add:
+
+extern crate rand;
+// ...
+use rand::Rng;
+
+Now modify our function to return the String instead of empty type:
+
+fn main()
+{
+    let secret_line = read_input().expect("Failed to read input data!");
+    println!("Secret line is: {}", secret_line);
+}
+
+fn read_input() -> Result<String, io::Error>
+{
+    let f = try!(File::open("input.txt"));
+    let file = BufReader::new(&f);
+    let mut v: Vec<String> = Vec::new();
+
+    for line in file.lines()
+    {
+        let l = line.unwrap().to_lowercase();
+        println!("{}", l);
+        v.push(l);
+    }
+
+    println!("Correctly loaded {} lines.", v.len());
+
+    let random_line = rand::thread_rng().gen_range(1, v.len());
+    let secret_line = v[random_line].clone();
+    Ok(secret_line)
+}
+
+## Read the user input
+
+fn read_guess() -> char
+{
+    let mut guess = String::new();
+    io::stdin().read_line(&mut guess).expect("Failed to read line");
+    let guessed_char : char = guess.chars().nth(0).unwrap(); [1]
+    guessed_char
+}
+
+This function return a char which user typed. I did not found a way to read a simply single character, so we read the whole line here and then we take only the first
+char of it with the [1] line.  I found in Internet also shorter way `guess.char_at(0)`, but it turned out to be unstable and deprecated.
+
+The user is prompted for input in infinite loop. His choices are stored in a String `discovered_letters`.
+
+fn main()
+{
+    let secret_line = read_input().expect("Failed to read input data!");
+    let mut discovered_letters  = String::new();
+    println!("Secret line is: {}", secret_line);
+
+    loop
+    {
+        println!("Type your guess:");
+        let user_guess = read_guess();
+        discovered_letters.push(user_guess);
+    }
+}
+
+Not much happening here yet.
+
+## Validate user input
+
+We shouldn't always save the char chosen by user. It should be skipped if:
+1. it's not a letter,
+2. it was already chosen earlier.
+
+Let's create a basic input validator. 
+
+For this purpose we create an enum UserInputStatus:
+
+enum UserInputStatus {
+    Valid,
+    NotAlphabetic,
+    AlreadyDiscovered
+}
+
+The function user_guess_can_be_accepted checks the both conditions 1. and 2. and returns the status of user input. Note how String is passed by reference in [1], to avoid moving the value.
+
+fn user_guess_can_be_accepted(discovered_letters: &String, user_guess: char) -> UserInputStatus // [1]
+{
+    if !user_guess.is_alphabetic()
+    {
+        return UserInputStatus::NotAlphabetic;
+    }
+
+    if discovered_letters.contains(user_guess)
+    {
+        return UserInputStatus::AlreadyDiscovered;
+    }
+
+    UserInputStatus::Valid // [2]
+}
+
+While early return requires `return` keyword and a semicolon, the final return doesn't [2]. https://doc.rust-lang.org/book/functions.html#early-returns
+
+fn main()
+{
+    let secret_line = read_input().expect("Failed to read input data!");
+    let mut discovered_letters  = String::new();
+    println!("Secret line is: {}", secret_line);
+
+    loop
+    {
+        println!("Type your guess:");
+        let user_guess = read_guess();
+
+        match user_guess_can_be_accepted(&discovered_letters, user_guess) // [3]
+        {
+            UserInputStatus::Valid =>
+            {
+                discovered_letters.push(user_guess);
+
+                if !secret_line.contains(user_guess)
+                {
+                    println!("Unfortunately, no {}",  &user_guess);
+                }
+            },
+
+            UserInputStatus::NotAlphabetic =>
+            {
+                println!("{} is not a letter!", user_guess);
+            },
+
+            UserInputStatus::AlreadyDiscovered =>
+            {
+                println!("{} is already discovered!", user_guess);
+            },
+        }
+
+        println!("Discovered letters: {}", discovered_letters);
+    }
+}
+
+[3] Match is equivalent of switch in C++. https://doc.rust-lang.org/book/match.html
+You can verify now how `discovered_letters` react to various input.
+
+
+
+
