@@ -17,78 +17,67 @@ struct GameData {
     secret_line         : String,
     discovered_letters  : String,
     lives               : i32,
-    status              : String,
-    game_end            : bool
+    status              : String
+}
+
+enum UserInputStatus {
+    AlreadyDiscovered,
+    LetterGuessed,
+    LetterMissed,
 }
 
 fn main()
 {
     let random_line = get_random_line().expect("Failed to read input data!");
-    // TODO: nicer way to display is needed
+
     let mut gd : GameData = GameData {
                         secret_line        : random_line,
                         discovered_letters : String::new(),
                         lives              : 5,
-                        status             : String::new(),
-                        game_end           : false
+                        status             : String::new()
                         };
+
+    let mut secret_line_masked = format_masked_string(&gd.secret_line, &gd.discovered_letters);
 
     loop
     {
-        clear();
-        println!("HANGMAN: CAN YOU GUESS THE SENTENCE?");
-        print_hangman(&gd);
-
-        let secret_line_masked = format_masked_string(&gd.secret_line, &gd.discovered_letters);
-        println!("{}", secret_line_masked);
-
-        // TODO: move to place of guessing
-        if !secret_line_masked.contains('_')
-        {
-            gd.game_end = true;
-            gd.status = Green.bold().paint("You won!").to_string();
-        }
-
-        println!("{}", gd.status);
-
-        if gd.game_end == true
-        {
-            break;
-        }
+        update_screen(&gd, &secret_line_masked);
 
         println!("Type your guess:");
         let user_guess = read_guess();
 
-        match user_guess
+        if validate_user_guess(user_guess)
         {
-            Some(guess) =>
+            let guess_lower = user_guess.unwrap().to_lowercase().next().unwrap();
+
+            match check_user_guess(&gd, guess_lower)
             {
-                if !guess.is_alphabetic()
+                UserInputStatus::LetterGuessed =>
                 {
-                    let status = format!("{} is not a letter!", guess);
-                    gd.status = Yellow.paint(status).to_string();
-                    continue;
+                    gd.discovered_letters.push(guess_lower);
+                    let status = format!("You discovered {}", guess_lower);
+                    gd.status = Green.paint(status).to_string();
+                    secret_line_masked = format_masked_string(&gd.secret_line, &gd.discovered_letters);
+
+                    if !secret_line_masked.contains('_')
+                    {
+                        gd.status = Green.bold().paint("You won!").to_string();
+                        update_screen(&gd, &secret_line_masked);
+                        break;
+                    }
                 }
 
-                let guess_lower = guess.to_lowercase().next().unwrap();
-
-                if gd.discovered_letters.contains(guess_lower)
+                UserInputStatus::LetterMissed =>
                 {
-                    let status = format!("{} is already discovered!", guess_lower);
-                    gd.status = Yellow.paint(status).to_string();
-                    continue;
-                }
-
-                gd.discovered_letters.push(guess_lower);
-
-                if !gd.secret_line.contains(guess_lower)
-                {
+                    gd.discovered_letters.push(guess_lower);
                     gd.lives = gd.lives - 1;
 
                     if gd.lives == 0
                     {
-                        gd.game_end = true;
                         gd.status = Red.bold().paint("You lost!").to_string();
+                        secret_line_masked = format_masked_string(&gd.secret_line, &gd.secret_line);
+                        update_screen(&gd, &secret_line_masked);
+                        break;
                     }
                     else
                     {
@@ -96,14 +85,18 @@ fn main()
                         gd.status = Red.paint(status).to_string();
                     }
                 }
-                else
+
+                UserInputStatus::AlreadyDiscovered =>
                 {
-                    let status = format!("You discovered {}", guess_lower);
-                    gd.status = Green.paint(status).to_string();
+                    let status = format!("{} is already discovered!", guess_lower);
+                    gd.status = Yellow.paint(status).to_string();
                 }
             }
-
-            None => {}
+        }
+        else
+        {
+            let status = format!("It is not a letter!");
+            gd.status = Yellow.paint(status).to_string();
         }
     }
 }
@@ -132,8 +125,6 @@ fn get_random_line() -> Result<String, io::Error>
     Ok(secret_line)
 }
 
-// TODO: there is no point in doing it everytime
-// TODO: discovered string should be stored and 1 letter changed everytime
 fn format_masked_string(input: &String, mask: &String) -> String
 {
     let mut result : String = String::new();
@@ -147,6 +138,44 @@ fn format_masked_string(input: &String, mask: &String) -> String
     }
 
     result
+}
+
+fn validate_user_guess(user_guess: Option<char>) -> bool
+{
+    match user_guess
+    {
+        Some(guess) =>
+        {
+            if !guess.is_alphabetic() { false }
+            else { true }
+        }
+
+        None => { return false; }
+    }
+}
+
+fn check_user_guess(gd: &GameData, user_guess: char) -> UserInputStatus
+{
+    if gd.discovered_letters.contains(user_guess)
+    {
+        return UserInputStatus::AlreadyDiscovered;
+    }
+
+    if !gd.secret_line.contains(user_guess)
+    {
+        return UserInputStatus::LetterMissed;
+    }
+
+    UserInputStatus::LetterGuessed
+}
+
+fn update_screen(gd: &GameData, secret_line: &String)
+{
+    clear();
+    println!("HANGMAN: CAN YOU GUESS THE SENTENCE?");
+    print_hangman(&gd);
+    println!("{}", secret_line);
+    println!("{}", gd.status);
 }
 
 fn print_hangman(gd: &GameData)
