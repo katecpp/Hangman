@@ -12,3 +12,7 @@ I used the way from this repo: https://github.com/davidbegin/clear-terminal
 ### The sentence base
 
 The sentences are taken from hangman\input.txt. You can add your own senteces to base. The sentence must be in newline and cannot contain the punctuation marks.
+
+### Screenshot
+
+<img src='https://github.com/katecpp/Hangman/blob/master/hangman/screenshot/hangman.png?raw=true'/>
