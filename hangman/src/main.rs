@@ -7,7 +7,7 @@ use std::io;
 use std::io::BufReader;
 use std::io::BufRead;
 use std::fs::File;
-use rand::Rng;
+use rand::{thread_rng, sample};
 
 use ansi_term::Colour::Red;
 use ansi_term::Colour::Green;
@@ -112,16 +112,9 @@ fn get_random_line() -> Result<String, io::Error>
 {
     let f = try!(File::open("input.txt"));
     let file = BufReader::new(&f);
-    let mut v: Vec<String> = Vec::new();
-
-    for line in file.lines()
-    {
-        let l = line.unwrap().to_lowercase();
-        v.push(l);
-    }
-
-    let random_line = rand::thread_rng().gen_range(1, v.len());
-    let secret_line = v[random_line].clone();
+    let mut rng = thread_rng();
+    let sample = sample(&mut rng, file.lines(), 1).pop().unwrap();
+    let secret_line = sample.unwrap().to_lowercase();
     Ok(secret_line)
 }
 
